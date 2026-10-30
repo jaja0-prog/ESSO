@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#0a111d"/>
+  <meta name="description" content="ESSO — central privada de colaboração, anúncios e crescimento."/>
+  <title>ESSO — workspace privado da operação</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="rain-wall" aria-hidden="true"><div class="window-droplets"><i class="rain-drop" style="--left:8%;--top:12%;--length:42px;--width:1.5px;--speed:24s;--delay:-9s;--opacity:0.21;--travel:56px"></i><i class="rain-drop" style="--left:15%;--top:55%;--length:73px;--width:1.5px;--speed:32s;--delay:-16s;--opacity:0.22;--travel:94px"></i><i class="rain-drop" style="--left:25%;--top:20%;--length:58px;--width:2px;--speed:29s;--delay:-20s;--opacity:0.25;--travel:88px"></i><i class="rain-drop" style="--left:32%;--top:66%;--length:44px;--width:1.5px;--speed:40s;--delay:-12s;--opacity:0.2;--travel:62px"></i><i class="rain-drop" style="--left:43%;--top:34%;--length:86px;--width:2px;--speed:35s;--delay:-27s;--opacity:0.22;--travel:107px"></i><i class="rain-drop" style="--left:50%;--top:9%;--length:36px;--width:1.5px;--speed:27s;--delay:-15s;--opacity:0.24;--travel:50px"></i><i class="rain-drop" style="--left:59%;--top:53%;--length:69px;--width:1.5px;--speed:38s;--delay:-31s;--opacity:0.22;--travel:120px"></i><i class="rain-drop" style="--left:67%;--top:17%;--length:56px;--width:2px;--speed:34s;--delay:-11s;--opacity:0.28;--travel:82px"></i><i class="rain-drop" style="--left:74%;--top:70%;--length:46px;--width:1.5px;--speed:30s;--delay:-18s;--opacity:0.21;--travel:70px"></i><i class="rain-drop" style="--left:81%;--top:29%;--length:77px;--width:1.5px;--speed:41s;--delay:-7s;--opacity:0.26;--travel:120px"></i><i class="rain-drop" style="--left:89%;--top:8%;--length:45px;--width:1.5px;--speed:33s;--delay:-24s;--opacity:0.21;--travel:65px"></i><i class="rain-drop" style="--left:95%;--top:49%;--length:61px;--width:2px;--speed:36s;--delay:-29s;--opacity:0.22;--travel:96px"></i></div><div class="soft-orb orb-one"></div><div class="soft-orb orb-two"></div></div>
+  <div id="app">
+    <div class="viewer-fallback" role="status">
+      <div class="fallback-logo">ESSO</div>
+      <h1>Abra o ESSO no navegador</h1>
+      <p>Este visualizador está mostrando somente o fundo do arquivo e não iniciou o aplicativo. Para acessar menus, mensagens e calculadora no iPhone, abra o ESSO por um endereço HTTPS publicado no Safari ou Chrome.</p>
+      <p class="fallback-small">A prévia HTML anexada ao ChatGPT pode bloquear JavaScript. Esse aviso desaparece automaticamente quando o aplicativo é executado corretamente.</p>
+    </div>
+  </div>
+  <div id="toast-stack" aria-live="polite"></div>
+  <script src="config.js"></script>
+  <script src="pricing-engine.js"></script>
+  <script defer src="app.js"></script>
+</body>
+</html>

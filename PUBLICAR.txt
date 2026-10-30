@@ -1,0 +1,1 @@
+Para abrir ESSO no iPhone como site: publique ESTA pasta em uma hospedagem HTTPS de sites estaticos. Para chat entre dois computadores e login privado, configure Supabase em config.js e execute supabase.sql antes de compartilhar o endereco. A versao sem configuracao e apenas demonstracao local, sem privacidade real.

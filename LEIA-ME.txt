@@ -1,0 +1,1 @@
+ESSO v8: abra index.html (ou ESSO-Demonstracao-v8.html) no Chrome/Edge para testar. A tela inicial oferece acesso simulado como Você ou Sócio. Use Calculadora de preços no menu. Para LOGIN REAL e MENSAGENS ENTRE DOIS PCs, siga o README.md e configure Supabase + hospedagem HTTPS.
