@@ -54,8 +54,8 @@ const ic = (name, size='') => `<svg class="icon ${size}" viewBox="0 0 24 24" ari
 const sid = id => escapeHtml(id);
 const seed = () => ({
   members:[
-    {user_id:'demo-owner',display_name:'Você',role:'owner'},
-    {user_id:'demo-partner',display_name:'Sócio',role:'partner'}
+    {user_id:'demo-owner',display_name:'João',role:'owner'},
+    {user_id:'demo-partner',display_name:'Daka',role:'partner'}
   ],
   listings:[],
   experiments:[],
@@ -68,15 +68,87 @@ let state={mode:(cfg.supabaseUrl&&cfg.supabaseAnonKey)?'cloud':'demo', user:null
 let client=null, photoCache=new Map();
 const demoKey='esso-app-demo-v8';
 const demoUserKey='esso-person-v8';
+// ESSO — Controle de acesso da demonstração
+const ESSO_ACCESS_KEY = 'pipi no short';
+const ESSO_MAX_ATTEMPTS = 3;
+const ESSO_BLOCK_TIME = 7 * 60 * 1000;
+
+function accessStatus(profile) {
+  const key = `esso-access-${profile}`;
+  const data = JSON.parse(localStorage.getItem(key) || '{}');
+
+  if (data.blockedUntil && Date.now() >= data.blockedUntil) {
+    localStorage.removeItem(key);
+    return { attempts: 0, blockedUntil: 0 };
+  }
+
+  return {
+    attempts: data.attempts || 0,
+    blockedUntil: data.blockedUntil || 0
+  };
+}
+
+function checkAccess(profile, password) {
+  const key = `esso-access-${profile}`;
+  const status = accessStatus(profile);
+
+  if (status.blockedUntil > Date.now()) {
+    const minutes = Math.ceil(
+      (status.blockedUntil - Date.now()) / 60000
+    );
+
+    return {
+      allowed: false,
+      message: `Acesso bloqueado. Tente novamente em ${minutes} minuto(s).`
+    };
+  }
+
+  if (password === ESSO_ACCESS_KEY) {
+    localStorage.removeItem(key);
+    return { allowed: true };
+  }
+
+  const attempts = status.attempts + 1;
+
+  if (attempts >= ESSO_MAX_ATTEMPTS) {
+    localStorage.setItem(key, JSON.stringify({
+      attempts,
+      blockedUntil: Date.now() + ESSO_BLOCK_TIME
+    }));
+
+    return {
+      allowed: false,
+      message: 'Você errou 3 vezes. Acesso bloqueado por 7 minutos.'
+    };
+  }
+
+  localStorage.setItem(key, JSON.stringify({
+    attempts,
+    blockedUntil: 0
+  }));
+
+  return {
+    allowed: false,
+    message: `Palavra-chave incorreta. Restam ${ESSO_MAX_ATTEMPTS - attempts} tentativa(s).`
+  };
+}
 const priceDraftKey='esso-price-draft-v8';
 function blankPrice(){const a=structuredClone(priceEngine.defaults);try{const old=JSON.parse(localStorage.getItem(priceDraftKey));if(old&&typeof old==='object'&&['Shopee','Mercado Livre'].includes(old.market))return {...a,...old}}catch{}return a}
 state.pricing=blankPrice();
 function savePriceDraft(){try{localStorage.setItem(priceDraftKey,JSON.stringify(state.pricing))}catch{}}
 let demoChannel=('BroadcastChannel' in window)?new BroadcastChannel('esso-demo-sync'):null;
-const startDemo=()=>{try{state.data=JSON.parse(localStorage.getItem(demoKey))||seed()}catch{state.data=seed()}if(!state.data.playbooks)state.data.playbooks=[];if(!state.data.price_calculations)state.data.price_calculations=[];const selected=sessionStorage.getItem(demoUserKey);state.user=selected?{id:selected,email:'demonstracao@local'}:null;persistDemo()};
+const startDemo=()=>{try{state.data=JSON.parse(localStorage.getItem(demoKey))||seed()}catch{state.data=seed()}if(!state.data.playbooks)state.data.playbooks=[];if(!state.data.price_calculations)state.data.price_calculations=[];state.data.members.forEach(member => {
+  if (member.user_id === 'demo-owner') {
+    member.display_name = 'João';
+  }
+
+  if (member.user_id === 'demo-partner') {
+    member.display_name = 'Daka';
+  }
+});
+const selected=sessionStorage.getItem(demoUserKey);state.user=selected?{id:selected,email:'demonstracao@local'}:null;persistDemo()};
 const persistDemo=()=>{if(state.mode==='demo' && state.data){try{localStorage.setItem(demoKey,JSON.stringify(state.data));demoChannel?.postMessage({type:'sync',at:Date.now()})}catch{notify('Armazenamento local cheio. Tente imagens menores.',true)}}};
-const me=()=>state.data?.members?.find(m=>m.user_id===state.user?.id)||{display_name:'Você',role:'owner',user_id:state.user?.id};
-const memberName=id=>state.data?.members?.find(m=>m.user_id===id)?.display_name||'Equipe';
+const me=()=>state.data?.members?.find(m=>m.user_id===state.user?.id)||{display_name:'João',role:'owner',user_id:state.user?.id};const memberName=id=>state.data?.members?.find(m=>m.user_id===id)?.display_name||'Equipe';
 const displayName=()=>me().display_name;
 const initials=name=>(name||'ES').trim().split(/\s+/).slice(0,2).map(s=>s[0].toUpperCase()).join('');
 const brand=()=>`<div class="brand"><div class="brand-mark esso">${cfg.brandLogo?`<img src="${escapeHtml(cfg.brandLogo)}" alt="Logo"/>`:'<span class=\"esso-s\">S</span><i class=\"fog\"></i>'}</div><div><strong>${escapeHtml(cfg.brandName||'ESSO')}</strong><span>PRIVATE WORKSPACE</span></div></div>`;
@@ -217,7 +289,7 @@ function pricePage(){const x=state.pricing,r=priceEngine.calc(x);const history=b
 function refreshPriceOutput(){const box=$('#price-output');if(box)box.innerHTML=priceResultHtml()}
 
 function assistantPanel(){return `<section class="card panel" style="margin-top:18px"><div class="panel-heading"><div><b class="section-title">${ic('spark','sm')} Pergunte ao seu histórico</b><p class="section-sub">Busca contextual simples nos testes da loja. Não é um chatbot de IA.</p></div></div><form id="ask-form" class="filterbar" style="margin-bottom:11px"><label class="searchbox" style="max-width:none">${ic('search','sm')}<input name="question" required minlength="4" maxlength="250" placeholder="Ex.: O que funcionou para meus chinelos?" value="${escapeHtml(state.askQuestion||'')}" /></label><button class="btn primary" type="submit">Consultar testes ${ic('arrow','sm')}</button></form>${state.askAnswer?`<div class="insight-box"><div class="lead">${ic('spark','sm')} Resposta baseada no histórico</div><p>${escapeHtml(state.askAnswer)}</p></div>`:`<p class="tiny-txt">Experimente perguntar “Qual mudança aumentou mais as visitas?” ou “O que fizemos nas camisetas?”. O resultado usa apenas as informações cadastradas.</p>`}</section>`}
-function settingsPage(){return `${pageHead('PREFERÊNCIAS','Configurações','Acesso, identidade visual e detalhes do ambiente.')}<div class="settings-grid"><div class="card setting-card"><h3>${ic('team')} Pessoas com acesso</h3><p>${state.mode==='demo'?'Na demonstração, é possível alternar entre dois perfis para testar a conversa e o chat em tempo real entre abas do navegador.':'Os membros são autorizados pelo administrador do Supabase. Não existe cadastro público.'}</p>${state.data.members.map(m=>`<div class="member-row"><div class="avatar ${m.role==='partner'?'partner':''}">${initials(m.display_name)}</div><div><strong style="font-size:12px">${escapeHtml(m.display_name)}</strong><div class="tiny-txt">${m.role==='owner'?'Administrador':'Sócio'}</div></div><span class="right">${state.mode==='demo'?'Exemplo':'Autorizado'}</span></div>`).join('')}${state.mode==='demo'?`<button class="btn soft sm" data-action="switch-user">${ic('team','sm')} Alternar para ${state.user.id==='demo-owner'?'Sócio':'Você'}</button>`:`<div class="learning-footer">Para adicionar ou remover usuários, use o painel do Supabase (Authentication + tabela members). Nunca compartilhe sua senha.</div>`}</div><div class="card setting-card"><h3>${ic('shield')} Segurança e sincronização</h3><p>${state.mode==='demo'?'Modo local: a demonstração salva os dados no navegador e sincroniza entre abas abertas no mesmo browser. Para uso privado entre dois dispositivos, configure o modo online com Supabase.':'Modo privado online: login individual, banco protegido por políticas RLS, imagens em armazenamento privado e mensagens sincronizadas.'}</p><div class="divider"></div><p><b style="color:white">Identidade visual</b><br/>A identidade padrão já vem com uma marca ESSO estilizada em gelo esfumaçado 3D. Se quiser trocar depois, você pode apontar um <code>brandLogo</code> em <code>config.js</code>.</p><p class="tiny-txt">Marca atual: ${escapeHtml(cfg.brandName||'ESSO')}</p>${state.mode==='cloud'?`<button class="btn outline sm" data-action="logout">${ic('log','sm')} Sair da conta</button>`:`<button class="btn outline sm" data-action="reset-demo">${ic('trash','sm')} Restaurar dados de teste</button>`}</div><div class="card setting-card"><h3>${ic('ext')} Integrações rápidas</h3><p>Links oficiais. A conexão com dados internos desses serviços não está incluída.</p><div class="action-list">${[['upseller','UpSeller'],['dogama','Dogama'],['meet','Google Meet']].map(([k,n])=>`<a class="action-tile" href="${escapeHtml(links[k])}" target="_blank" rel="noopener noreferrer"><div><b>${n}</b><small>Abre em nova aba</small></div>${ic('ext','sm')}</a>`).join('')}</div></div><div class="card setting-card"><h3>${ic('spark')} Como o painel aprende</h3><p>O sistema organiza seus testes e mostra quais ajustes tiveram aumento ou queda de visitas. É uma inteligência estatística simples e transparente.</p><p>O painel já compara históricos e facilita a consulta dos aprendizados. Se quiser uma IA avançada no futuro, ela pode ser integrada com backend seguro.</p><div class="learning-footer">Recomendação: mudar uma variável por teste e guardar tanto visitas quanto pedidos, para comparar melhor.</div></div></div>`}
+function settingsPage(){return `${pageHead('PREFERÊNCIAS','Configurações','Acesso, identidade visual e detalhes do ambiente.')}<div class="settings-grid"><div class="card setting-card"><h3>${ic('team')} Pessoas com acesso</h3><p>${state.mode==='demo'?'Na demonstração, é possível alternar entre dois perfis para testar a conversa e o chat em tempo real entre abas do navegador.':'Os membros são autorizados pelo administrador do Supabase. Não existe cadastro público.'}</p>${state.data.members.map(m=>`<div class="member-row"><div class="avatar ${m.role==='partner'?'partner':''}">${initials(m.display_name)}</div><div><strong style="font-size:12px">${escapeHtml(m.display_name)}</strong><div class="tiny-txt">${m.role==='owner'?'Administrador':'Sócio'}</div></div><span class="right">${state.mode==='demo'?'Exemplo':'Autorizado'}</span></div>`).join('')}${state.mode==='demo'?`<button class="btn soft sm" data-action="switch-user">${ic('team','sm')} Alternar para ${state.user.id==='demo-owner'?'Daka':'João'}</button>`:`<div class="learning-footer">Para adicionar ou remover usuários, use o painel do Supabase (Authentication + tabela members). Nunca compartilhe sua senha.</div>`}</div><div class="card setting-card"><h3>${ic('shield')} Segurança e sincronização</h3><p>${state.mode==='demo'?'Modo local: a demonstração salva os dados no navegador e sincroniza entre abas abertas no mesmo browser. Para uso privado entre dois dispositivos, configure o modo online com Supabase.':'Modo privado online: login individual, banco protegido por políticas RLS, imagens em armazenamento privado e mensagens sincronizadas.'}</p><div class="divider"></div><p><b style="color:white">Identidade visual</b><br/>A identidade padrão já vem com uma marca ESSO estilizada em gelo esfumaçado 3D. Se quiser trocar depois, você pode apontar um <code>brandLogo</code> em <code>config.js</code>.</p><p class="tiny-txt">Marca atual: ${escapeHtml(cfg.brandName||'ESSO')}</p>${state.mode==='cloud'?`<button class="btn outline sm" data-action="logout">${ic('log','sm')} Sair da conta</button>`:`<button class="btn outline sm" data-action="reset-demo">${ic('trash','sm')} Restaurar dados de teste</button>`}</div><div class="card setting-card"><h3>${ic('ext')} Integrações rápidas</h3><p>Links oficiais. A conexão com dados internos desses serviços não está incluída.</p><div class="action-list">${[['upseller','UpSeller'],['dogama','Dogama'],['meet','Google Meet']].map(([k,n])=>`<a class="action-tile" href="${escapeHtml(links[k])}" target="_blank" rel="noopener noreferrer"><div><b>${n}</b><small>Abre em nova aba</small></div>${ic('ext','sm')}</a>`).join('')}</div></div><div class="card setting-card"><h3>${ic('spark')} Como o painel aprende</h3><p>O sistema organiza seus testes e mostra quais ajustes tiveram aumento ou queda de visitas. É uma inteligência estatística simples e transparente.</p><p>O painel já compara históricos e facilita a consulta dos aprendizados. Se quiser uma IA avançada no futuro, ela pode ser integrada com backend seguro.</p><div class="learning-footer">Recomendação: mudar uma variável por teste e guardar tanto visitas quanto pedidos, para comparar melhor.</div></div></div>`}
 function modalShell(title,sub,body,save='Salvar'){return `<div class="modal-shade" id="modal-shade"><div class="modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}"><div class="modal-head"><div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(sub)}</p></div><button class="close-btn" data-action="close-modal" aria-label="Fechar">×</button></div>${body}</div></div>`}
 function photoField(name='photo'){return `<label class="file-drop">${ic('photo')} <span data-file-label>Adicionar imagem do produto ou print do anúncio</span><input type="file" name="${name}" accept="image/*" data-upload /></label><img class="file-drop-preview hidden" id="file-preview" alt="Prévia da imagem"/>`}
 function formActions(label){return `<div class="modal-actions"><button type="button" class="btn outline" data-action="close-modal">Cancelar</button><button type="submit" class="btn primary">${ic('check','sm')} ${label}</button></div>`}
@@ -231,7 +303,64 @@ if(m.type==='playbook'){const e=m.id?state.data.playbooks.find(p=>p.id===m.id):{
   if(m.type==='profile')return modalShell('Minha conta','Informações sobre este acesso.',`<div class="member-row"><div class="avatar">${initials(displayName())}</div><div><strong>${escapeHtml(displayName())}</strong><p class="tiny-txt">${state.mode==='demo'?'Acesso de demonstração':'Acesso individual autenticado'}</p></div></div>${state.mode==='demo'?`<button class="btn soft" data-action="switch-user">${ic('team','sm')} Simular outro integrante</button><button class="btn outline" data-action="demo-logout">${ic('log','sm')} Sair da demonstração</button>`:`<button class="btn outline" data-action="logout">${ic('log','sm')} Encerrar sessão</button>`}`);
   return '';
 }
-function demoLoginPage(){return `<div class="login-screen"><div class="login-card">${brand()}<h1>Bem-vindo ao ESSO.</h1><p>Escolha qual perfil deseja usar nesta prévia local. Para você e seu sócio entrarem de computadores diferentes, será necessário publicar o site e ativar o Supabase.</p><button class="btn primary" data-action="demo-login" data-id="demo-owner">${ic('shield','sm')} Entrar como Você</button><button class="btn soft" data-action="demo-login" data-id="demo-partner">${ic('team','sm')} Entrar como Sócio</button><div class="demo-note">${ic('shield','sm')} Prévia: esses botões não substituem autenticação. Não insira dados confidenciais.</div></div></div>`}
+function demoLoginPage() {
+  return `
+    <div class="login-screen">
+      <div class="login-card">
+
+        ${brand()}
+
+        <h1>Bem-vindo ao ESSO.</h1>
+
+        <p>
+          Seu espaço privado de colaboração.
+          Selecione seu perfil e informe a palavra-chave de acesso.
+        </p>
+
+        <div class="field">
+          <label for="esso-password">Palavra-chave</label>
+
+          <input
+            id="esso-password"
+            type="password"
+            placeholder="Digite a palavra-chave"
+            autocomplete="off"
+          />
+        </div>
+
+        <button
+          class="btn primary"
+          data-action="demo-login"
+          data-id="demo-owner"
+        >
+          Entrar como João
+        </button>
+
+        <button
+          class="btn soft"
+          data-action="demo-login"
+          data-id="demo-partner"
+          style="margin-top:12px;"
+        >
+          Entrar como Daka
+        </button>
+
+        <p
+          id="esso-login-error"
+          class="notice"
+          aria-live="polite"
+          style="margin-top:16px;"
+        ></p>
+
+        <div class="demo-note">
+          Acesso de demonstração.
+          O bloqueio de tentativas funciona neste navegador.
+        </div>
+
+      </div>
+    </div>
+  `;
+}
 function loginPage(){return `<div class="login-screen"><div class="login-card">${brand()}<h1>Seu workspace privado.</h1><p>Entre com a conta autorizada para conversar, compartilhar imagens e acompanhar as mudanças dos seus anúncios.</p><form id="login-form"><div class="field"><label>E-mail</label><input type="email" name="email" required autocomplete="email" placeholder="voce@exemplo.com" /></div><div class="field"><label>Senha</label><input type="password" name="password" required autocomplete="current-password" placeholder="Sua senha" /></div><button class="btn primary" type="submit">${ic('shield','sm')} Entrar no ESSO</button></form>${state.authError?`<div class="notice">${escapeHtml(state.authError)}</div>`:''}<div class="demo-note">${ic('shield','sm')} Acesso restrito: apenas as duas contas cadastradas pelo administrador podem visualizar os dados. Não há cadastro público.</div></div></div>`}
 function render(){
   const root=$('#app');
@@ -278,7 +407,36 @@ async function handleSubmit(e){const form=e.target;if(form.id==='login-form'){e.
 document.addEventListener('submit',handleSubmit);
 document.addEventListener('click',async e=>{
   const a=e.target.closest('[data-action]');if(!a){if(e.target.id==='modal-shade'){state.modal=null;render()}return}const act=a.dataset.action,id=a.dataset.id;
-  if(act==='demo-login'&&state.mode==='demo'){state.user={id:id==='demo-partner'?'demo-partner':'demo-owner',email:'demonstracao@local'};sessionStorage.setItem(demoUserKey,state.user.id);state.route='dashboard';render();return}
+if (act === 'demo-login' && state.mode === 'demo') {
+  const passwordInput = document.getElementById('esso-password');
+  const errorElement = document.getElementById('esso-login-error');
+
+  const password = passwordInput?.value || '';
+  const result = checkAccess(id, password);
+
+  if (!result.allowed) {
+    if (errorElement) {
+      errorElement.textContent = result.message;
+    }
+
+    if (passwordInput) {
+      passwordInput.value = '';
+    }
+
+    return;
+  }
+
+  state.user = {
+    id: id === 'demo-partner' ? 'demo-partner' : 'demo-owner',
+    email: 'demonstracao@local'
+  };
+
+  sessionStorage.setItem(demoUserKey, state.user.id);
+  state.route = 'dashboard';
+
+  render();
+  return;
+}
   if(act==='price-market'){state.pricing.market=id==='Mercado Livre'?'Mercado Livre':'Shopee';state.pricing.marginPct=id==='Mercado Livre'?16:8;state.pricing.customPrice=false;savePriceDraft();render();return}
   if(act==='reset-price'){state.pricing=structuredClone(priceEngine.defaults);savePriceDraft();render();notify('Simulação zerada.');return}
   if(act==='price-load'){const row=state.data.price_calculations.find(y=>y.id===id);if(row&&row.inputs){state.pricing={...structuredClone(priceEngine.defaults),...row.inputs};savePriceDraft();navigate('pricing');notify('Cálculo recuperado.')}return}
@@ -297,8 +455,15 @@ document.addEventListener('click',async e=>{
   if(act==='alerts'){openModal('alerts');return}
   if(act==='profile'){openModal('profile');return}
   if(act==='close-modal'){state.modal=null;render();return}
-  if(act==='switch-user'&&state.mode==='demo'){state.user.id=state.user.id==='demo-owner'?'demo-partner':'demo-owner';sessionStorage.setItem(demoUserKey,state.user.id);state.modal=null;notify('Perfil de demonstração alterado.');render();return}
-  if(act==='reset-demo'&&state.mode==='demo'){if(confirm('Restaurar a demonstração? Isso apaga as alterações locais.')){state.data=seed();persistDemo();navigate('dashboard');notify('Demonstração restaurada.')}return}
+if (act === 'switch-user' && state.mode === 'demo') {
+  sessionStorage.removeItem(demoUserKey);
+
+  state.user = null;
+  state.modal = null;
+
+  render();
+  return;
+}  if(act==='reset-demo'&&state.mode==='demo'){if(confirm('Restaurar a demonstração? Isso apaga as alterações locais.')){state.data=seed();persistDemo();navigate('dashboard');notify('Demonstração restaurada.')}return}
   if(act==='logout'&&client){await client.auth.signOut();return}
   if(act==='demo-logout'&&state.mode==='demo'){sessionStorage.removeItem(demoUserKey);state.user=null;state.modal=null;render();return}
   if(act==='open-photo'){const src=a.src||'';if(src&&src.startsWith('data:')||src&&src.startsWith('https:'))window.open(src,'_blank','noopener');return}
