@@ -105,6 +105,7 @@ alter table public.price_calculations enable row level security;
 revoke all on public.members, public.listings, public.experiments, public.messages, public.ideas, public.playbooks, public.price_calculations from anon;
 grant select on public.members to authenticated;
 grant select, insert, update on public.listings, public.experiments, public.messages, public.ideas, public.playbooks to authenticated;
+grant delete on public.listings, public.ideas to authenticated;
 grant select, insert on public.price_calculations to authenticated;
 
 create policy "authorized_members_can_read_members" on public.members
@@ -116,6 +117,8 @@ create policy "authorized_members_can_create_listings" on public.listings
   for insert to authenticated with check (public.is_team_member() and created_by = (select auth.uid()));
 create policy "authorized_members_can_update_listings" on public.listings
   for update to authenticated using (public.is_team_member()) with check (public.is_team_member());
+create policy "authorized_members_can_delete_listings" on public.listings
+  for delete to authenticated using (public.is_team_member());
 
 create policy "authorized_members_can_read_experiments" on public.experiments
   for select to authenticated using (public.is_team_member());
@@ -136,6 +139,8 @@ create policy "authorized_members_can_create_ideas" on public.ideas
   for insert to authenticated with check (public.is_team_member() and created_by = (select auth.uid()));
 create policy "authorized_members_can_update_ideas" on public.ideas
   for update to authenticated using (public.is_team_member()) with check (public.is_team_member());
+create policy "authorized_members_can_delete_ideas" on public.ideas
+  for delete to authenticated using (public.is_team_member());
 
 create policy "authorized_members_can_read_playbooks" on public.playbooks
   for select to authenticated using (public.is_team_member());

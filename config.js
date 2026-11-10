@@ -8,6 +8,8 @@ window.MMB_CONFIG = {
   brandName: 'ESSO',
 
   meetUrl: 'https://meet.google.com/',
-  upsellerUrl: 'https://app.upseller.com/pt/login',
-  dogamaUrl: 'https://dogama.com.br/app/dashboard'
+  upsellerUrl: 'https://app.upseller.com/pt/login',       // link do Upseller usado no login do Daka (mantido)
+  upsellerUrlOwner: 'https://app.upseller.com/pt/login',  // 👉 TROQUE SÓ AQUI pelo SEU link do Upseller quando tiver
+  dogamaUrl: 'https://dogama.com.br/app/dashboard',
+  onedropUrl: 'https://app.onedrop.com.br/dashboard'
 };
